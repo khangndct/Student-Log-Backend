@@ -1,0 +1,63 @@
+package handlers
+
+import (
+	"backend/internal/models"
+	"backend/internal/utils"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"gorm.io/gorm"
+)
+
+type AdminAccountsHandler struct {
+	DB *gorm.DB
+}
+
+func (h *AdminAccountsHandler) List(c echo.Context) error {
+	var accounts []models.Account
+	if err := h.DB.Find(&accounts).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+	}
+	return c.JSON(http.StatusOK, accounts)
+}
+
+type CreateAccountReq struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Role     string `json:"role"` // "admin" | "member"
+}
+
+func (h *AdminAccountsHandler) Create(c echo.Context) error {
+	var req CreateAccountReq
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
+	}
+	if req.Role != "admin" && req.Role != "member" {
+		return echo.NewHTTPError(http.StatusBadRequest, "role must be admin or member")
+	}
+
+	// flow: hashing password
+	hash, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "hash failed")
+	}
+
+	acc := models.Account{
+		Username:     req.Username,
+		PasswordHash: hash,
+		Role:         req.Role,
+	}
+	if err := h.DB.Create(&acc).Error; err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "create failed (duplicate username?)")
+	}
+
+	return c.JSON(http.StatusCreated, acc)
+}
+
+func (h *AdminAccountsHandler) Delete(c echo.Context) error {
+	id := c.Param("id")
+	if err := h.DB.Delete(&models.Account{}, id).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "delete failed")
+	}
+	return c.NoContent(http.StatusNoContent)
+}
