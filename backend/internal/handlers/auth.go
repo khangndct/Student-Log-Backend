@@ -37,15 +37,20 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	}
 
 	// Check if password hash match
-	if !utils.VerifyPassword(acc.PasswordHash, req.Password) {
+	if !utils.VerifyPassword(acc.Password, req.Password) {
 		return echo.NewHTTPError(http.StatusUnauthorized, "wrong username or password")
+	}
+
+	role := "member"
+	if acc.Username == "admin" {
+		role = "admin"
 	}
 
 	// flow: check admin permission -> frontend route theo role
 	// JWT Claim
 	claims := middleware.JwtClaims{
-		UserID: acc.ID,
-		Role:   acc.Role,
+		UserID: uint(acc.ID),
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -60,6 +65,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, echo.Map{
 		"token": tokenStr,
-		"role":  acc.Role,
+		"role":  role,
 	})
 }

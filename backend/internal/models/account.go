@@ -1,12 +1,9 @@
 package models
 
-import "time"
-
 type Account struct {
-	ID           uint   `gorm:"primaryKey"`
-	Username     string `gorm:"uniqueIndex;not null"`
-	PasswordHash string `gorm:"not null"`
-	Role         string `gorm:"not null"` // "admin" | "member"
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID       int64  `gorm:"primaryKey;type:bigint"`
+	Username string `gorm:"type:varchar(255);not null"`
+	Phone    int64  `gorm:"type:bigint;not null"`
+	Email    string `gorm:"type:varchar(255);not null;uniqueIndex"`
+	Password string `gorm:"type:varchar(255);not null"` // Hashed
 }

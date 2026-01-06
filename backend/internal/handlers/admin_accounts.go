@@ -23,17 +23,15 @@ func (h *AdminAccountsHandler) List(c echo.Context) error {
 
 type CreateAccountReq struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
+	Phone    int64  `json:"phone"`
 	Password string `json:"password"`
-	Role     string `json:"role"` // "admin" | "member"
 }
 
 func (h *AdminAccountsHandler) Create(c echo.Context) error {
 	var req CreateAccountReq
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
-	}
-	if req.Role != "admin" && req.Role != "member" {
-		return echo.NewHTTPError(http.StatusBadRequest, "role must be admin or member")
 	}
 
 	// flow: hashing password
@@ -43,9 +41,10 @@ func (h *AdminAccountsHandler) Create(c echo.Context) error {
 	}
 
 	acc := models.Account{
-		Username:     req.Username,
-		PasswordHash: hash,
-		Role:         req.Role,
+		Username: req.Username,
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Password: hash,
 	}
 	if err := h.DB.Create(&acc).Error; err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "create failed (duplicate username?)")

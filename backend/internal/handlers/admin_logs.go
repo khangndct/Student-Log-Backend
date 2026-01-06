@@ -3,8 +3,10 @@ package handlers
 import (
 	"backend/internal/models"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -21,9 +23,11 @@ func (h *AdminLogsHandler) ListLogHeads(c echo.Context) error {
 }
 
 type CreateLogHeadReq struct {
-	Title      string `json:"title"`
-	WriteScope string `json:"write_scope"` // "all" | "owner" | "admin"
-	OwnerID    uint   `json:"owner_id"`
+	Subject      string        `json:"subject"`
+	StartDate    time.Time     `json:"start_date"`
+	EndDate      time.Time     `json:"end_date"`
+	WriterIDList pq.Int64Array `json:"writer_id_list"`
+	OwnerID      uint          `json:"owner_id"`
 }
 
 func (h *AdminLogsHandler) CreateLogHead(c echo.Context) error {
@@ -31,14 +35,13 @@ func (h *AdminLogsHandler) CreateLogHead(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
 	}
-	if req.WriteScope != "all" && req.WriteScope != "owner" && req.WriteScope != "admin" {
-		return echo.NewHTTPError(http.StatusBadRequest, "write_scope must be all|owner|admin")
-	}
 
 	head := models.LogHead{
-		Title:      req.Title,
-		WriteScope: req.WriteScope,
-		OwnerID:    req.OwnerID,
+		Subject:      req.Subject,
+		StartDate:    req.StartDate,
+		EndDate:      req.EndDate,
+		WriterIDList: req.WriterIDList,
+		OwnerID:      req.OwnerID,
 	}
 	if err := h.DB.Create(&head).Error; err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "create failed")

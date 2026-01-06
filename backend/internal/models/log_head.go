@@ -1,14 +1,18 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/lib/pq"
+)
 
 type LogHead struct {
-	ID         uint   `gorm:"primaryKey"`
-	Title      string `gorm:"not null"`
-	WriteScope string `gorm:"not null"` // "all" | "owner" | "admin"
-	OwnerID    uint   `gorm:"not null"`
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID           uint   `gorm:"primaryKey"`
+	Subject      string `gorm:"not null"`
+	StartDate    time.Time
+	EndDate      time.Time
+	WriterIDList pq.Int64Array `gorm:"not null"`
+	OwnerID      uint          `gorm:"not null"`
 
 	LogContents []LogContent `gorm:"constraint:OnDelete:CASCADE;"`
 }

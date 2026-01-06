@@ -17,16 +17,17 @@ const jwtSecret = "dev_secret_change_me"
 // This is a function to seed an admin when currently there is no admin
 func seedAdmin(database *gorm.DB) {
 	var count int64
-	database.Model(&models.Account{}).Where("role = ?", "admin").Count(&count)
+	database.Model(&models.Account{}).Where("username = ?", "admin").Count(&count)
 	if count > 0 {
 		return
 	}
 
 	hash, _ := utils.HashPassword("admin123")
 	_ = database.Create(&models.Account{
-		Username:     "admin",
-		PasswordHash: hash,
-		Role:         "admin",
+		Username: "admin",
+		Email:    "admin@example.com",
+		Phone:    0,
+		Password: hash,
 	}).Error
 
 	log.Println("Seeded admin account: admin / admin123")
