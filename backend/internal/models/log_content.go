@@ -3,9 +3,9 @@ package models
 import "time"
 
 type LogContent struct {
-	ID        uint      `gorm:"primaryKey"`
-	LogHeadID uint      `gorm:"index;not null"`
-	WriterID  uint      `gorm:"index;not null"`
-	Content   string    `gorm:"not null"`
-	Date      time.Time `gorm:"not null"` // timestamp of input
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	LogHeadID uint      `gorm:"index;not null" json:"log_head_id"`
+	WriterID  uint      `gorm:"index;not null" json:"writer_id"`
+	Content   string    `gorm:"not null" json:"content"`
+	Date      time.Time `gorm:"not null" json:"date"` // timestamp of input
 }

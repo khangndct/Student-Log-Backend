@@ -30,24 +30,6 @@ def parse_body(raw):
         return text
 
 
-def get_field(obj, *keys):
-    if not isinstance(obj, dict):
-        return None
-    for key in keys:
-        if key in obj:
-            return obj[key]
-
-    def normalize_key(value):
-        return "".join(ch for ch in value.lower() if ch.isalnum())
-
-    normalized_map = {normalize_key(k): v for k, v in obj.items()}
-    for key in keys:
-        normalized = normalize_key(key)
-        if normalized in normalized_map:
-            return normalized_map[normalized]
-    return None
-
-
 def request(method, path, token=None, json_body=None, expected_status=None):
     url = f"{BASE_URL}{path}"
     data = None
@@ -110,11 +92,11 @@ def main():
     if not isinstance(accounts, list):
         fail("accounts list response is not a list")
     admin_account = next(
-        (acc for acc in accounts if get_field(acc, "username") == ADMIN_USERNAME), None
+        (acc for acc in accounts if acc.get("username") == ADMIN_USERNAME), None
     )
     if not admin_account:
         fail("admin account not found in list")
-    admin_id = get_field(admin_account, "id")
+    admin_id = admin_account.get("id")
     if admin_id is None:
         fail("admin account missing id")
     print("OK: list admin accounts")
@@ -137,11 +119,8 @@ def main():
         expected_status=201,
     )
     if not isinstance(member_account, dict) or "id" not in member_account:
-        member_id = get_field(member_account, "id")
-        if member_id is None:
-            fail("member account create response missing id")
-    else:
-        member_id = member_account["id"]
+        fail("member account create response missing id")
+    member_id = member_account["id"]
     print("OK: create member account")
 
     now = datetime.datetime.now(datetime.UTC)
@@ -161,9 +140,9 @@ def main():
         },
         expected_status=201,
     )
-    log_head_id = get_field(log_head, "id")
-    if not isinstance(log_head, dict) or log_head_id is None:
+    if not isinstance(log_head, dict) or "id" not in log_head:
         fail("log head create response missing id")
+    log_head_id = log_head["id"]
     print("OK: create log head")
 
     request("GET", "/api/log-heads", token=admin_token, expected_status=200)
@@ -184,7 +163,7 @@ def main():
         expected_status=200,
     )
     if isinstance(member_writable, list):
-        if not any(get_field(head, "id") == log_head_id for head in member_writable):
+        if not any(head.get("id") == log_head_id for head in member_writable):
             fail("member writable list missing created log head")
     print("OK: list writable log heads (member)")
 
@@ -200,8 +179,7 @@ def main():
         expected_status=201,
     )
     if not isinstance(log_content, dict) or log_content.get("log_head_id") != log_head_id:
-        if get_field(log_content, "log_head_id") != log_head_id:
-            fail("log content create response invalid")
+        fail("log content create response invalid")
     print("OK: create log content")
 
     request("GET", "/api/admin/log-heads", token=admin_token, expected_status=200)
