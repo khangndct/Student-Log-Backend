@@ -11,7 +11,7 @@ type LogHead struct {
 	Subject      string `gorm:"not null"`
 	StartDate    time.Time
 	EndDate      time.Time
-	WriterIDList pq.Int64Array `gorm:"not null"`
+	WriterIDList pq.Int64Array `gorm:"type:bigint[];not null"`
 	OwnerID      uint          `gorm:"not null"`
 
 	LogContents []LogContent `gorm:"constraint:OnDelete:CASCADE;"`
