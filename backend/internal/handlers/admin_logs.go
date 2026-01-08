@@ -16,7 +16,7 @@ type AdminLogsHandler struct {
 
 func (h *AdminLogsHandler) ListLogHeads(c echo.Context) error {
 	var heads []models.LogHead
-	if err := h.DB.Find(&heads).Error; err != nil {
+	if err := h.DB.Preload("LogContents").Find(&heads).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
 	}
 	return c.JSON(http.StatusOK, heads)
@@ -70,7 +70,7 @@ func (h *AdminLogsHandler) UpdateLogHead(c echo.Context) error {
 	id := c.Param("id")
 	
 	var head models.LogHead
-	if err := h.DB.First(&head, id).Error; err != nil {
+	if err := h.DB.Preload("LogContents").First(&head, id).Error; err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "log head not found")
 	}
 

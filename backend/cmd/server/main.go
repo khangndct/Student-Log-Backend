@@ -11,9 +11,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -134,6 +136,62 @@ func seedMember(database *gorm.DB) {
 	log.Println("Seeded member account: member / member123")
 }
 
+// This is a function to seed a log head with admin as owner and admin+member as writers, plus a sample log content
+func seedLogHeadWithContent(database *gorm.DB) {
+	// Check if log head already exists (by checking for a specific subject)
+	var count int64
+	database.Model(&models.LogHead{}).Where("subject = ?", "Sample Student Diary Log").Count(&count)
+	if count > 0 {
+		return
+	}
+
+	// Get admin and member account IDs
+	var admin models.Account
+	if err := database.Where("username = ?", "admin").First(&admin).Error; err != nil {
+		log.Println("Warning: Admin account not found, skipping log head seeding")
+		return
+	}
+
+	var member models.Account
+	if err := database.Where("username = ?", "member").First(&member).Error; err != nil {
+		log.Println("Warning: Member account not found, skipping log head seeding")
+		return
+	}
+
+	// Create log head with admin as owner and both admin and member as writers
+	now := time.Now()
+	logHead := models.LogHead{
+		Subject:      "Sample Student Diary Log",
+		StartDate:    now.AddDate(0, 0, -7), // 7 days ago
+		EndDate:      now.AddDate(0, 0, 30),  // 30 days from now
+		WriterIDList: pq.Int64Array{int64(admin.ID), int64(member.ID)},
+		OwnerID:      uint(admin.ID),
+	}
+
+	if err := database.Create(&logHead).Error; err != nil {
+		log.Printf("Warning: Failed to create log head: %v", err)
+		return
+	}
+
+	// Create a sample log content (event) for this log head, written by admin
+	logContent := models.LogContent{
+		LogHeadID: logHead.ID,
+		WriterID:  uint(admin.ID),
+		Content:   "Today we had a great class discussion about project management. All students participated actively and shared their ideas.",
+		Date:      now,
+	}
+
+	if err := database.Create(&logContent).Error; err != nil {
+		log.Printf("Warning: Failed to create log content: %v", err)
+		return
+	}
+
+	log.Printf("Seeded log head (ID: %d) with owner: admin (ID: %d), writers: admin (ID: %d) and member (ID: %d)", 
+		logHead.ID, admin.ID, admin.ID, member.ID)
+	log.Printf("Seeded log content (ID: %d) for log head (ID: %d) written by admin", 
+		logContent.ID, logHead.ID)
+}
+
 func main() {
 	loadEnvFiles(".env", filepath.Join("..", ".env"))
 	dsn, err := buildPostgresDSN()
@@ -152,6 +210,7 @@ func main() {
 	}
 	seedAdmin(database)
 	seedMember(database)
+	seedLogHeadWithContent(database)
 
 	e := echo.New()
 	e.Use(middleware.Logger())

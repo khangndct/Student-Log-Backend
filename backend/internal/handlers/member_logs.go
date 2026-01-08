@@ -15,7 +15,7 @@ type MemberLogsHandler struct {
 
 func (h *MemberLogsHandler) ListLogHeads(c echo.Context) error {
 	var heads []models.LogHead
-	if err := h.DB.Find(&heads).Error; err != nil {
+	if err := h.DB.Preload("LogContents").Find(&heads).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
 	}
 	return c.JSON(http.StatusOK, heads)
@@ -30,13 +30,13 @@ func (h *MemberLogsHandler) ListWritableLogHeads(c echo.Context) error {
 	q := h.DB.Model(&models.LogHead{})
 
 	if role == "admin" {
-		if err := q.Find(&heads).Error; err != nil {
+		if err := q.Preload("LogContents").Find(&heads).Error; err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "db error")
 		}
 		return c.JSON(http.StatusOK, heads)
 	}
 
-	if err := q.Where("? = ANY(writer_id_list)", int64(userID)).Find(&heads).Error; err != nil {
+	if err := q.Preload("LogContents").Where("? = ANY(writer_id_list)", int64(userID)).Find(&heads).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
 	}
 
