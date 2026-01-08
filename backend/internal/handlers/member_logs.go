@@ -90,3 +90,65 @@ func (h *MemberLogsHandler) CreateLogContent(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, lc)
 }
+
+type UpdateLogContentReq struct {
+	Content *string    `json:"content"`
+	Date    *time.Time `json:"date"`
+}
+
+func (h *MemberLogsHandler) UpdateLogContent(c echo.Context) error {
+	id := c.Param("id")
+	userID := c.Get("user_id").(uint)
+	role := c.Get("role").(string)
+
+	var content models.LogContent
+	if err := h.DB.First(&content, id).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "log content not found")
+	}
+
+	// Check permission: admin or the original writer
+	if role != "admin" && content.WriterID != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "no permission to update this log content")
+	}
+
+	var req UpdateLogContentReq
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
+	}
+
+	// Update only provided fields
+	if req.Content != nil {
+		content.Content = *req.Content
+	}
+	if req.Date != nil {
+		content.Date = *req.Date
+	}
+
+	if err := h.DB.Save(&content).Error; err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "update failed")
+	}
+
+	return c.JSON(http.StatusOK, content)
+}
+
+func (h *MemberLogsHandler) DeleteLogContent(c echo.Context) error {
+	id := c.Param("id")
+	userID := c.Get("user_id").(uint)
+	role := c.Get("role").(string)
+
+	var content models.LogContent
+	if err := h.DB.First(&content, id).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "log content not found")
+	}
+
+	// Check permission: admin or the original writer
+	if role != "admin" && content.WriterID != userID {
+		return echo.NewHTTPError(http.StatusForbidden, "no permission to delete this log content")
+	}
+
+	if err := h.DB.Delete(&content).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "delete failed")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}

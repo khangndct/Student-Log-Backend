@@ -27,10 +27,23 @@ func Register(e *echo.Echo, db *gorm.DB, jwtSecret string) {
 
 	admin.GET("/log-heads", adminLogs.ListLogHeads)
 	admin.POST("/log-heads", adminLogs.CreateLogHead)
+	admin.PUT("/log-heads/:id", adminLogs.UpdateLogHead)
+	admin.PATCH("/log-heads/:id", adminLogs.UpdateLogHead)
 	admin.DELETE("/log-heads/:id", adminLogs.DeleteLogHead)
 
 	memberLogs := &handlers.MemberLogsHandler{DB: db}
 	api.GET("/log-heads", memberLogs.ListLogHeads)
 	api.GET("/log-heads/writable", memberLogs.ListWritableLogHeads)
 	api.POST("/log-contents", memberLogs.CreateLogContent)
+	api.PUT("/log-contents/:id", memberLogs.UpdateLogContent)
+	api.PATCH("/log-contents/:id", memberLogs.UpdateLogContent)
+	api.DELETE("/log-contents/:id", memberLogs.DeleteLogContent)
+
+	// Members search (admin only)
+	membersSearch := api.Group("/members", appmw.RequireRole("admin"))
+	membersSearch.GET("/search", adminAccounts.SearchMembers)
+
+	// User
+	user := &handlers.UserHandler{DB: db}
+	api.GET("/user", user.Get)
 }

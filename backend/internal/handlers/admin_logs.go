@@ -57,3 +57,48 @@ func (h *AdminLogsHandler) DeleteLogHead(c echo.Context) error {
 	}
 	return c.NoContent(http.StatusNoContent)
 }
+
+type UpdateLogHeadReq struct {
+	Subject      *string        `json:"subject"`
+	StartDate    *time.Time     `json:"start_date"`
+	EndDate      *time.Time     `json:"end_date"`
+	WriterIDList *pq.Int64Array `json:"writer_id_list"`
+	OwnerID      *uint          `json:"owner_id"`
+}
+
+func (h *AdminLogsHandler) UpdateLogHead(c echo.Context) error {
+	id := c.Param("id")
+	
+	var head models.LogHead
+	if err := h.DB.First(&head, id).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "log head not found")
+	}
+
+	var req UpdateLogHeadReq
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
+	}
+
+	// Update only provided fields
+	if req.Subject != nil {
+		head.Subject = *req.Subject
+	}
+	if req.StartDate != nil {
+		head.StartDate = *req.StartDate
+	}
+	if req.EndDate != nil {
+		head.EndDate = *req.EndDate
+	}
+	if req.WriterIDList != nil {
+		head.WriterIDList = *req.WriterIDList
+	}
+	if req.OwnerID != nil {
+		head.OwnerID = *req.OwnerID
+	}
+
+	if err := h.DB.Save(&head).Error; err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "update failed")
+	}
+
+	return c.JSON(http.StatusOK, head)
+}

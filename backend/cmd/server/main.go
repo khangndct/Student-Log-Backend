@@ -115,6 +115,25 @@ func seedAdmin(database *gorm.DB) {
 	log.Println("Seeded admin account: admin / admin123")
 }
 
+// This is a function to seed a member account for testing purposes
+func seedMember(database *gorm.DB) {
+	var count int64
+	database.Model(&models.Account{}).Where("username = ?", "member").Count(&count)
+	if count > 0 {
+		return
+	}
+
+	hash, _ := utils.HashPassword("member123")
+	_ = database.Create(&models.Account{
+		Username: "member",
+		Email:    "member@example.com",
+		Phone:    1234567890,
+		Password: hash,
+	}).Error
+
+	log.Println("Seeded member account: member / member123")
+}
+
 func main() {
 	loadEnvFiles(".env", filepath.Join("..", ".env"))
 	dsn, err := buildPostgresDSN()
@@ -132,6 +151,7 @@ func main() {
 		log.Fatal(err)
 	}
 	seedAdmin(database)
+	seedMember(database)
 
 	e := echo.New()
 	e.Use(middleware.Logger())

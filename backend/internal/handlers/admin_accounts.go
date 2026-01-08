@@ -60,3 +60,25 @@ func (h *AdminAccountsHandler) Delete(c echo.Context) error {
 	}
 	return c.NoContent(http.StatusNoContent)
 }
+
+func (h *AdminAccountsHandler) SearchMembers(c echo.Context) error {
+	query := c.QueryParam("q")
+	if query == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "query parameter 'q' is required")
+	}
+
+	var accounts []models.Account
+	searchPattern := "%" + query + "%"
+	
+	// Search in username, email, or phone
+	if err := h.DB.Where(
+		"username ILIKE ? OR email ILIKE ? OR CAST(phone AS TEXT) LIKE ?",
+		searchPattern,
+		searchPattern,
+		searchPattern,
+	).Find(&accounts).Error; err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+	}
+
+	return c.JSON(http.StatusOK, accounts)
+}
