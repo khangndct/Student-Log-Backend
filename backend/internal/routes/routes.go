@@ -47,4 +47,5 @@ func Register(e *echo.Echo, db *gorm.DB, jwtSecret string) {
 	// User
 	user := &handlers.UserHandler{DB: db}
 	api.GET("/user", user.Get)
+	api.PUT("/user", user.Update)
 }
