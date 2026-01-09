@@ -13,6 +13,7 @@
 - phone (int64)
 - email (string)
 - password (string, hashed)
+- role (string)
 
 ## Log Head Endpoints
 
