@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"backend/internal/models"
+	"errors"
 	"net/http"
 	"time"
 
@@ -28,6 +29,7 @@ type LogHeadResponse struct {
 	StartDate    time.Time           `json:"start_date"`
 	EndDate      time.Time           `json:"end_date"`
 	WriterIDList []int64             `json:"writer_id_list"`
+	WriterNames  []string            `json:"writer_names"`
 	OwnerID      uint                `json:"owner_id"`
 	OwnerName    string              `json:"owner_name"`
 	LogContents  []LogContentResponse `json:"log_contents"`
@@ -120,6 +122,78 @@ func (h *MemberLogsHandler) ListWritableLogHeads(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, heads)
+}
+
+func (h *MemberLogsHandler) GetLogHead(c echo.Context) error {
+	id := c.Param("id")
+	
+	var head models.LogHead
+	if err := h.DB.Preload("LogContents").First(&head, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return echo.NewHTTPError(http.StatusNotFound, "log head not found")
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+	}
+	
+	// Collect all unique owner and writer IDs
+	accountIDSet := make(map[int64]bool)
+	accountIDSet[int64(head.OwnerID)] = true
+	for _, writerID := range head.WriterIDList {
+		accountIDSet[writerID] = true
+	}
+	for _, content := range head.LogContents {
+		accountIDSet[int64(content.WriterID)] = true
+	}
+	
+	accountIDs := make([]int64, 0, len(accountIDSet))
+	for id := range accountIDSet {
+		accountIDs = append(accountIDs, id)
+	}
+	
+	// Fetch all accounts in one query
+	accountsMap := make(map[uint]string)
+	if len(accountIDs) > 0 {
+		var accounts []models.Account
+		if err := h.DB.Where("id IN ?", accountIDs).Find(&accounts).Error; err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+		}
+		for _, acc := range accounts {
+			accountsMap[uint(acc.ID)] = acc.Username
+		}
+	}
+	
+	// Build writer names list from writer_id_list
+	writerNames := make([]string, len(head.WriterIDList))
+	for i, writerID := range head.WriterIDList {
+		writerNames[i] = accountsMap[uint(writerID)]
+	}
+	
+	// Build response
+	contents := make([]LogContentResponse, len(head.LogContents))
+	for i, content := range head.LogContents {
+		contents[i] = LogContentResponse{
+			ID:         content.ID,
+			LogHeadID:  content.LogHeadID,
+			WriterID:   content.WriterID,
+			Content:    content.Content,
+			Date:       content.Date,
+			WriterName: accountsMap[content.WriterID],
+		}
+	}
+	
+	response := LogHeadResponse{
+		ID:           head.ID,
+		Subject:      head.Subject,
+		StartDate:    head.StartDate,
+		EndDate:      head.EndDate,
+		WriterIDList: head.WriterIDList,
+		WriterNames:  writerNames,
+		OwnerID:      head.OwnerID,
+		OwnerName:    accountsMap[head.OwnerID],
+		LogContents:  contents,
+	}
+	
+	return c.JSON(http.StatusOK, response)
 }
 
 type CreateLogContentReq struct {

@@ -13,6 +13,10 @@ func Register(e *echo.Echo, db *gorm.DB, jwtSecret string) {
 	auth := &handlers.AuthHandler{DB: db, Secret: jwtSecret}
 	e.POST("/api/auth/login", auth.Login)
 
+	// Public
+	memberLogs := &handlers.MemberLogsHandler{DB: db}
+	e.GET("/api/log-heads/:id", memberLogs.GetLogHead)
+
 	// Protected
 	api := e.Group("/api", appmw.JWTAuth(jwtSecret))
 
@@ -32,7 +36,6 @@ func Register(e *echo.Echo, db *gorm.DB, jwtSecret string) {
 	admin.PATCH("/log-heads/:id", adminLogs.UpdateLogHead)
 	admin.DELETE("/log-heads/:id", adminLogs.DeleteLogHead)
 
-	memberLogs := &handlers.MemberLogsHandler{DB: db}
 	api.GET("/log-heads", memberLogs.ListLogHeads)
 	api.GET("/log-heads/writable", memberLogs.ListWritableLogHeads)
 	api.POST("/log-contents", memberLogs.CreateLogContent)
