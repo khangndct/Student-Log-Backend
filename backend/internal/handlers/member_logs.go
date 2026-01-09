@@ -13,12 +13,91 @@ type MemberLogsHandler struct {
 	DB *gorm.DB
 }
 
+type LogContentResponse struct {
+	ID        uint      `json:"id"`
+	LogHeadID uint      `json:"log_head_id"`
+	WriterID  uint      `json:"writer_id"`
+	Content   string    `json:"content"`
+	Date      time.Time `json:"date"`
+	WriterName string   `json:"writer_name"`
+}
+
+type LogHeadResponse struct {
+	ID           uint                `json:"id"`
+	Subject      string              `json:"subject"`
+	StartDate    time.Time           `json:"start_date"`
+	EndDate      time.Time           `json:"end_date"`
+	WriterIDList []int64             `json:"writer_id_list"`
+	OwnerID      uint                `json:"owner_id"`
+	OwnerName    string              `json:"owner_name"`
+	LogContents  []LogContentResponse `json:"log_contents"`
+}
+
 func (h *MemberLogsHandler) ListLogHeads(c echo.Context) error {
 	var heads []models.LogHead
 	if err := h.DB.Preload("LogContents").Find(&heads).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "db error")
 	}
-	return c.JSON(http.StatusOK, heads)
+
+	// Collect all unique owner and writer IDs
+	ownerIDs := make(map[uint]bool)
+	writerIDs := make(map[uint]bool)
+	for _, head := range heads {
+		ownerIDs[head.OwnerID] = true
+		for _, content := range head.LogContents {
+			writerIDs[content.WriterID] = true
+		}
+	}
+
+	// Fetch all accounts in one query
+	var accountIDs []int64
+	for id := range ownerIDs {
+		accountIDs = append(accountIDs, int64(id))
+	}
+	for id := range writerIDs {
+		if !ownerIDs[id] {
+			accountIDs = append(accountIDs, int64(id))
+		}
+	}
+
+	accountsMap := make(map[uint]string)
+	if len(accountIDs) > 0 {
+		var accounts []models.Account
+		if err := h.DB.Where("id IN ?", accountIDs).Find(&accounts).Error; err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "db error")
+		}
+		for _, acc := range accounts {
+			accountsMap[uint(acc.ID)] = acc.Username
+		}
+	}
+
+	// Build response
+	responses := make([]LogHeadResponse, len(heads))
+	for i, head := range heads {
+		contents := make([]LogContentResponse, len(head.LogContents))
+		for j, content := range head.LogContents {
+			contents[j] = LogContentResponse{
+				ID:         content.ID,
+				LogHeadID:  content.LogHeadID,
+				WriterID:   content.WriterID,
+				Content:    content.Content,
+				Date:       content.Date,
+				WriterName: accountsMap[content.WriterID],
+			}
+		}
+		responses[i] = LogHeadResponse{
+			ID:           head.ID,
+			Subject:      head.Subject,
+			StartDate:    head.StartDate,
+			EndDate:      head.EndDate,
+			WriterIDList: head.WriterIDList,
+			OwnerID:      head.OwnerID,
+			OwnerName:    accountsMap[head.OwnerID],
+			LogContents:  contents,
+		}
+	}
+
+	return c.JSON(http.StatusOK, responses)
 }
 
 // flow: filter writable log heads by WriterIDList

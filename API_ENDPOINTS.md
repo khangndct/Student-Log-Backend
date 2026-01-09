@@ -14,9 +14,32 @@
 - email (string)
 - password (string, hashed)
 
+## Log Head Endpoints
+
+2. GET /api/log-heads
+   Description: List all log heads.
+   Auth: Bearer token
+   Response 200 JSON: Array of LogHead objects
+   LogHead fields:
+   - id (uint)
+   - subject (string)
+   - start_date (string, RFC3339 timestamp)
+   - end_date (string, RFC3339 timestamp)
+   - writer_id_list (array of int64)
+   - owner_id (uint)
+   - owner_name (string)
+   - log_contents (array of LogContent, may be null/empty if not preloaded)
+     LogContent fields (within log_contents):
+   - id (uint)
+   - log_head_id (uint)
+   - writer_id (uint)
+   - content (string)
+   - date (string, RFC3339 timestamp)
+   - writer_name (string)
+
 ## Admin Endpoints
 
-2. PUT/PATCH /api/admin/log-heads/:id
+3. PUT/PATCH /api/admin/log-heads/:id
    Description: Update log head metadata. All fields are optional (partial update).
    Auth: Bearer token (admin role required)
    Request Body JSON (all fields optional):
@@ -36,7 +59,7 @@
 - owner_id (uint)
 - log_contents (array of LogContent, auto-populated)
 
-3. GET /api/members/search?q=...
+4. GET /api/members/search?q=...
    Description: Search for members by username, email, or phone number.
    Auth: Bearer token (admin role required)
    Query Parameters:
@@ -52,7 +75,7 @@
 
 ## Log Content Endpoints
 
-4. PUT/PATCH /api/log-contents/:id
+5. PUT/PATCH /api/log-contents/:id
    Description: Update log content. All fields are optional (partial update).
    Auth: Bearer token (any authenticated user)
    Permission: Admin or the original writer of the log content
@@ -68,7 +91,7 @@
 - content (string)
 - date (time)
 
-5. DELETE /api/log-contents/:id
+6. DELETE /api/log-contents/:id
    Description: Delete log content.
    Auth: Bearer token (any authenticated user)
    Permission: Admin or the original writer of the log content
