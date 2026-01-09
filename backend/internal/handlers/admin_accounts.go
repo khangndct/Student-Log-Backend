@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"backend/internal/models"
+	"backend/internal/services"
 	"backend/internal/utils"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"gorm.io/gorm"
@@ -54,8 +56,13 @@ func (h *AdminAccountsHandler) Create(c echo.Context) error {
 }
 
 func (h *AdminAccountsHandler) Delete(c echo.Context) error {
-	id := c.Param("id")
-	if err := h.DB.Delete(&models.Account{}, id).Error; err != nil {
+	idStr := c.Param("id")
+	accountID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid account id")
+	}
+
+	if err := services.DeleteAccountWithCascade(h.DB, accountID); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "delete failed")
 	}
 	return c.NoContent(http.StatusNoContent)
