@@ -89,3 +89,52 @@ func (h *AdminAccountsHandler) SearchMembers(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, accounts)
 }
+
+type UpdateAccountReq struct {
+	Username *string `json:"username"`
+	Email    *string `json:"email"`
+	Phone    *int64  `json:"phone"`
+	Password *string `json:"password"`
+}
+
+func (h *AdminAccountsHandler) Update(c echo.Context) error {
+	idStr := c.Param("id")
+	accountID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid account id")
+	}
+
+	var account models.Account
+	if err := h.DB.First(&account, accountID).Error; err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "account not found")
+	}
+
+	var req UpdateAccountReq
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid body")
+	}
+
+	// Update only provided fields
+	if req.Username != nil {
+		account.Username = *req.Username
+	}
+	if req.Email != nil {
+		account.Email = *req.Email
+	}
+	if req.Phone != nil {
+		account.Phone = *req.Phone
+	}
+	if req.Password != nil {
+		hash, err := utils.HashPassword(*req.Password)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "hash failed")
+		}
+		account.Password = hash
+	}
+
+	if err := h.DB.Save(&account).Error; err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "update failed")
+	}
+
+	return c.JSON(http.StatusOK, account)
+}

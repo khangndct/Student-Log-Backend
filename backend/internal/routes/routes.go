@@ -23,6 +23,7 @@ func Register(e *echo.Echo, db *gorm.DB, jwtSecret string) {
 	admin := api.Group("/admin", appmw.RequireRole("admin"))
 	admin.GET("/accounts", adminAccounts.List)
 	admin.POST("/accounts", adminAccounts.Create)
+	admin.PUT("/accounts/:id", adminAccounts.Update)
 	admin.DELETE("/accounts/:id", adminAccounts.Delete)
 
 	admin.GET("/log-heads", adminLogs.ListLogHeads)
